@@ -124,7 +124,7 @@ BEGIN
         assert P_OUT_R = x"00000000"
             report "UUT_R did not async reset correctly" severity error;
         
-        wait for 3*CLK_PERIOD/4; -- sync back up to clock
+        wait until falling_edge(CLK); -- sync back up to clock
         
         wait for CLK_PERIOD;
         RST <= '0';
@@ -146,7 +146,7 @@ BEGIN
         wait for CLK_PERIOD;
         
         
-        report "Simulation finished" severity note;
+        report "Simulation completed " severity note;
         sim_done <= true;
         wait;
     end process;

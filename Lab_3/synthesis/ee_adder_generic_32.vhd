@@ -26,7 +26,8 @@ entity ee_adder_generic_32 is
     generic (
            N        : INTEGER:=32
     );
-    port ( numA, numB   : IN STD_LOGIC_VECTOR(N-1 downto 0);
+    port ( 
+           numA, numB   : IN STD_LOGIC_VECTOR(N-1 downto 0);
            sub          : IN STD_LOGIC; -- no carry in; sub replaces Cin
            numSum       : OUT STD_LOGIC_VECTOR(N-1 downto 0);
            Carry_out    : OUT STD_LOGIC
