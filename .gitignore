@@ -1,0 +1,8 @@
+# xsim script output (in any lab folder)
+**/build/*
+!**build/*.wcfg
+
+**/bd/**
+!**/bd/**/
+!**/bd/**/*.bd
+!**/bd/**/*.ui

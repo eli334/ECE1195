@@ -25,7 +25,8 @@ ARCHITECTURE tb OF shift_tb IS
     signal P_IN_R   : std_logic_vector(31 downto 0) := (others => '0');
     signal P_OUT_R  : std_logic_vector(31 downto 0);
     signal Q_R      : std_logic;
-
+    
+    signal sim_done : boolean := false;
 BEGIN
 
     UUT_L : entity work.ee_shift_register
@@ -63,7 +64,7 @@ BEGIN
     -- Clock: runs forever
     clock_process : process
     begin
-        while true loop
+        while not sim_done loop
             CLK <= '0';
             wait for CLK_PERIOD / 2;
             CLK <= '1';
@@ -82,19 +83,72 @@ BEGIN
         LOAD <= '1';
         
         P_IN_L <= x"FFFFAAAA22228888";
-        P_IN_R <= x"BBBBCCCC";
+        P_IN_R <= x"BBBBDDDD";
         wait until falling_edge(CLK);
         LOAD <= '0'; -- value is loaded
         
         ENABLE <= '1';
         wait for 8*CLK_PERIOD; -- 8 shifts; should be:
         assert P_OUT_L = x"FFAAAA2222888800"
-            report "left shift failed; did not shift by 8 bits correctly in 8 cycles" severity error;
-        assert P_OUT_R = x"00BBBBCC"
-            report "right shift failed; did not shift by 8 bits correctly in 8 cycles" severity error;
-
+            report "UUT_L  failed; did not shift by 8 bits correctly in 8 cycles" severity error;
+        assert Q_L = '1'
+            report "UUT_L  asserts incorrect bit on the MSB" severity error;
+        
+        assert P_OUT_R = x"00BBBBDD"
+            report "UUT_R failed; did not shift by 8 bits correctly in 8 cycles" severity error;
+        assert Q_R = '1'
+            report "UUT_R asserts incorrect bit on the LSB" severity error;
+        
+        ENABLE <= '0';
+        wait for 6*CLK_PERIOD;
+        assert P_OUT_L = x"FFAAAA2222888800"
+            report "UUT_L hold failed; did not hold value" severity error;
+        assert P_OUT_R = x"00BBBBDD"
+            report "UUT_R hold failed; did not hold value" severity error;
+        
+        
+        ENABLE <= '1';
+        SIN <= '1';
+        wait for 8*CLK_PERIOD; -- fill 8 bits with SIN
+        assert P_OUT_L = x"AAAA2222888800FF"
+            report "UUT_L did not read SIN correctly" severity error;
+        assert P_OUT_R = x"FF00BBBB"
+            report "UUT_R did not read SIN correctly" severity error;
+        
+        ENABLE <= '0';
+        SIN <= '0';
+        RST <= '1';
+        wait for CLK_PERIOD/4;
+        assert P_OUT_L = x"0000000000000000"
+            report "UUT_L did not async reset correctly" severity error;
+        assert P_OUT_R = x"00000000"
+            report "UUT_R did not async reset correctly" severity error;
+        
+        wait for 3*CLK_PERIOD/4; -- sync back up to clock
+        
+        wait for CLK_PERIOD;
+        RST <= '0';
+        
+        wait for 2*CLK_PERIOD; -- nothing should happen here
+        
+        P_IN_L <= x"0123456789ABCDEF";
+        P_IN_R <= x"DEADBEEF";
+        
+        ENABLE <= '1';
+        LOAD <= '1';
+        
+        wait for CLK_PERIOD;
+        assert P_OUT_L = P_IN_L 
+            report "UUT_L LOAD did not take priority" severity error;
+        assert P_OUT_R = P_IN_R 
+            report "UUT_R LOAD did not take priority" severity error;
+        
+        wait for CLK_PERIOD;
+        
+        
         report "Simulation finished" severity note;
-        wait;   -- stop this process forever
+        sim_done <= true;
+        wait;
     end process;
 
 END tb;
