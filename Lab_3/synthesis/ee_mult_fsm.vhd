@@ -5,15 +5,15 @@ entity ee_mult_fsm is
 
 	port
 	(
-		RST          : in	std_logic;
+        RST          : in	std_logic;
         CLK          : in	std_logic;
         Q            : in	std_logic;
         C_max        : in	std_logic;
-		load_product : out	std_logic;
+        load_product : out	std_logic;
         multD_enable : out	std_logic;
         multR_enable : out	std_logic;
         counter_enable  : out	std_logic;
-		done         : out	std_logic
+        done         : out	std_logic
 	);
 	
 end entity;
