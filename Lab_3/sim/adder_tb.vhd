@@ -3,10 +3,10 @@ use IEEE.STD_LOGIC_1164.ALL;
 
 use IEEE.NUMERIC_STD.ALL;
 
-entity ee_adder_tb is
-end ee_adder_tb;
+entity adder_tb is
+end adder_tb;
 
-architecture TB of ee_adder_tb is
+architecture tb of adder_tb is
     component ee_adder_generic_32 is
     generic (N : INTEGER := 32);
     port(
@@ -191,4 +191,4 @@ begin
     
     wait;
     end process;
-end TB;  
+end tb;  
