@@ -23,11 +23,13 @@ architecture structural of ee_mult_top is
     signal load_product    : std_logic;
     signal multD_enable    : std_logic;
     signal multR_enable    : std_logic;
+    signal first_iter      : std_logic;
     
     signal counter_enable  : std_logic;
 
     -- signal multiplier      : std_logic_vector(MULT_WIDTH - 1 downto 0); -- not read from
-    signal A_ext, multiplicand, adder_out, product_out:
+    signal B_shift         : std_logic_vector(MULT_WIDTH-1 downto 0);
+    signal A_ext, A_shift, adder_mux, multiplicand, adder_out, product_out:
                              std_logic_vector((2 * MULT_WIDTH - 1) downto 0);
 begin
     ee_mult_counter : entity work.ee_counter
@@ -47,11 +49,11 @@ begin
             left_shift => true
         )
         port map(
-            LOAD   => rst,
+            LOAD   => first_iter,
             ENABLE => multD_enable,
             CLK    => clk,
             SIN    => '0',
-            P_IN   => A_ext,
+            P_IN   => A_shift,
             RST    => '0',
             Q      => open,
             P_OUT  => multiplicand
@@ -62,11 +64,11 @@ begin
             left_shift => false
         )
         port map(
-            LOAD   => rst,
+            LOAD   => first_iter,
             ENABLE => multR_enable,
             CLK    => clk,
             SIN    => '0',
-            P_IN   => B,
+            P_IN   => B_shift,
             RST    => '0',
             Q      => Q,
             P_OUT  => open
@@ -89,7 +91,7 @@ begin
     )
     port map(
         numA      => product_out,
-        numB      => multiplicand,
+        numB      => adder_mux,
         sub       => '0',
         Carry_out => open,
         numSum    => adder_out
@@ -99,7 +101,9 @@ begin
             RST          => rst,
             CLK          => clk,
             Q            => Q,
+            B0           => B(0),
             C_max        => C_max,
+            first_iter   => first_iter,
             load_product => load_product,
             multD_enable => multD_enable,
             multR_enable => multR_enable,
@@ -107,6 +111,9 @@ begin
             done         => done
     );
 
-    A_ext <= (MULT_WIDTH-1 downto 0 => '0') & A;
+    adder_mux <= A_ext when first_iter = '1' else multiplicand;
+    A_ext <= ((MULT_WIDTH-1 downto 0 => '0') & A);
+    A_shift <= A_ext(2*MULT_WIDTH-2 downto 0) & '0';
+    B_shift <= '0' & B(MULT_WIDTH-1 downto 1);
     R <= product_out;
 end architecture;
