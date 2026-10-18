@@ -15,7 +15,7 @@ function Get-CompileOrder([string[]]$Files) {
     $deps    = @{}   # file -> unit names it references in work
 
     foreach ($f in $Files) {
-        $text = [regex]::Replace((Get-Content $f -Raw), '--[^\r\n]*', '')  # strip comments
+        $text = [regex]::Replace([string](Get-Content $f -Raw), '--[^\r\n]*', '')  # strip comments
         foreach ($m in [regex]::Matches($text, '(?im)^\s*(entity|package)\s+(\w+)\s+is\b')) {
             $defines[$m.Groups[2].Value.ToLower()] = $f
         }
