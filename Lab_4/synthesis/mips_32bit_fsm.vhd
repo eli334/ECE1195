@@ -43,10 +43,18 @@ begin
     constant OP_SLTI : STD_LOGIC_VECTOR(5 downto 0) := "001010";
     constant OP_BNE  : STD_LOGIC_VECTOR(5 downto 0) := "000101";
     constant OP_J    : STD_LOGIC_VECTOR(5 downto 0) := "000010";
+    constant OP_LH   : STD_LOGIC_VECTOR(5 downto 0) := "100001";
+    constant OP_LUI  : STD_LOGIC_VECTOR(5 downto 0) := "001111";
+    constant OP_LW   : STD_LOGIC_VECTOR(5 downto 0) := "100011";
 
     constant SPECIAL : STD_LOGIC_VECTOR(5 downto 0) := "000000";
     constant SP_ADDU : STD_LOGIC_VECTOR(5 downto 0) := "100001";
     constant SP_AND  : STD_LOGIC_VECTOR(5 downto 0) := "100100";
+    constant SP_JR   : STD_LOGIC_VECTOR(5 downto 0) := "001000"; -- this is the same as OP_J
+    constant SP_MFHI : STD_LOGIC_VECTOR(5 downto 0) := "010000";
+    constant SP_MFLO : STD_LOGIC_VECTOR(5 downto 0) := "010010";
+    constant SP_MULTU: STD_LOGIC_VECTOR(5 downto 0) := "011001";
+    constant SP_SLL  : STD_LOGIC_VECTOR(5 downto 0) := "000000";
 
     constant SPECIAL2: STD_LOGIC_VECTOR(5 downto 0) := "011100";
     constant SP2_CLO : STD_LOGIC_VECTOR(5 downto 0) := "100001";
