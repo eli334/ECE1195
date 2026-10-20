@@ -41,6 +41,17 @@ begin
     constant OP_ADDI : STD_LOGIC_VECTOR(5 downto 0) := "001000";
     constant OP_ORI  : STD_LOGIC_VECTOR(5 downto 0) := "001101";
     constant OP_SLTI : STD_LOGIC_VECTOR(5 downto 0) := "001010";
+    constant OP_BNE  : STD_LOGIC_VECTOR(5 downto 0) := "000101";
+    constant OP_J    : STD_LOGIC_VECTOR(5 downto 0) := "000010";
+
+    constant SPECIAL : STD_LOGIC_VECTOR(5 downto 0) := "000000";
+    constant SP_ADDU : STD_LOGIC_VECTOR(5 downto 0) := "100001";
+    constant SP_AND  : STD_LOGIC_VECTOR(5 downto 0) := "100100";
+
+    constant SPECIAL2: STD_LOGIC_VECTOR(5 downto 0) := "011100";
+    constant SP2_CLO : STD_LOGIC_VECTOR(5 downto 0) := "100001";
+
+
     begin
         if reset = '1' then
             state <= FETCH;
@@ -65,10 +76,12 @@ begin
     process (state)
     begin
         case state is
-            when ADDI_EX 
-            => ALUOp <= 
-            when ORI_EX =>
+            when ADDI_EX => 
+                ALUOp <= "01";
+            when ORI_EX => 
+                ALUOp <= "00";
             when SLTI_EX =>
+                ALUOp <= "11";
 
         end case;
     end process;
