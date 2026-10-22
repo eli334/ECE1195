@@ -58,7 +58,7 @@ begin
         );
     Arith_Unit : entity work.Arith_Unit(struct)
     generic map (
-        n => 32 -- this is the default but I am being explicit for future reference
+        n => 32
     )
     port map (
         A => A,
