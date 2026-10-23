@@ -28,15 +28,16 @@ entity CPU_datapath IS
         ALUSrcB     : in STD_LOGIC_VECTOR(1 downto 0);
         RegWrite    : in STD_LOGIC;
         RegDst      : in STD_LOGIC;
-        ExtOp       : in STD_LOGIC
-        
+        ExtOp       : in STD_LOGIC;
+
+        MultDisable  : in STD_LOGIC;
+        MultFinished : out STD_LOGIC
     );
 end CPU_datapath;
 
 architecture datapath of CPU_datapath is
     
     --- registers
-    
     -- IR (and ways IR is split for instructions)
 
     signal IR_IN   : STD_LOGIC_VECTOR(31 downto 0);
@@ -51,6 +52,8 @@ architecture datapath of CPU_datapath is
     signal IR_SHAMT: STD_LOGIC_VECTOR(4 downto 0);  -- 10 downto 6
 
     signal IR_SPECIAL : STD_LOGIC_VECTOR(5 downto 0); -- 5 downto 0
+
+    signal IR_J       : STD_LOGIC_VECTOR(25 downto 0);
     
     -- regfile
     signal REGF_ADDR_IN_1  : STD_LOGIC_VECTOR(31 downto 0);
@@ -72,18 +75,29 @@ architecture datapath of CPU_datapath is
     -- ALUOut register
     signal ALU_REG_OUT : STD_LOGIC_VECTOR(31 downto 0);
     
+    -- HI register
+    signal HI_REG_IN   : STD_LOGIC_VECTOR(31 downto 0);
+    signal HI_REG_OUT  : STD_LOGIC_VECTOR(31 downto 0);
+    -- LO register
+    signal LO_REG_IN   : STD_LOGIC_VECTOR(31 downto 0);
+    signal LO_REG_OUT  : STD_LOGIC_VECTOR(31 downto 0);
+
     -- PC signals ((PCWriteCond AND ALU_ZERO) OR PCWrite)
     signal PCLoad    : STD_LOGIC;
     signal PCValueIn : STD_LOGIC_VECTOR(31 downto 0); -- PC mux from (0) ALU, (1) ALUOut, (2) J<<2
     signal PCValueOut: STD_LOGIC_VECTOR(31 downto 0);
 
     --- ALU signals
-    signal ALU_RESULT   : STD_LOGIC_VECTOR(31 downto 0);
     signal ALU_A        : STD_LOGIC_VECTOR(31 downto 0);
     signal ALU_B        : STD_LOGIC_VECTOR(31 downto 0);
+    -- shamt (IR_SHAMT)
+    -- ALUOp (from FSM)
+    signal ALU_RESULT   : STD_LOGIC_VECTOR(31 downto 0);
+    -- signal ALU_OF       : STD_LOGIC; -- unused
     signal ALU_ZERO     : STD_LOGIC;
-    -- signal ALU_OVERFLOW : STD_LOGIC;
 
+    --- multiplier signals
+    signal MULT_RESULT : STD_LOGIC_VECTOR(63 downto 0);
     --- sign extender signals
     signal SGN_EXT_OUT  : STD_LOGIC_VECTOR(31 downto 0);
 
@@ -118,7 +132,12 @@ begin
     IR_SPECIAL <= IR_OUT(5 downto 0); -- OP for SPECIAL/SPECIAL2 instructions
     Funct <= IR_SPECIAL; -- straight into FSM
 
+    IR_J <= IR_OUT(25 downto 0);
+
     PCLoad <= (PCWriteCond and ALU_ZERO) or PCWrite;
+
+    HI_REG_IN <= MULT_RESULT(63 downto 32);
+    LO_REG_IN <= MULT_RESULT(31 downto 0);
 
     --- mux logic
     -- regfile Write Data
@@ -129,11 +148,23 @@ begin
 
     -- A mux
     ALU_A_MUX_OUT <= A_REG_OUT when ALUSrcA = '1' else PCValueOut; 
+    
+    -- B mux
     with ALUSrcB select
-    ALU_B_MUX_OUT <= B_REG_OUT             when "00",
-                     x"00000004"           when "01",
-                     EXT_IMM               when "10",
-                     EXT_IMM_SHIFTED       when others;
+        ALU_B_MUX_OUT <=    B_REG_OUT     when "00",
+                            x"00000004"   when "01",
+                            SGN_EXT_OUT   when "10",
+                            IMDT_SLL_OUT  when "11",
+                            B_REG_OUT     when others;
+
+    -- PC mux
+    with PCSource select
+        PCValueIn <=    ALU_RESULT  when "00",
+                        ALU_REG_OUT when "01",
+                        PCValueOut(31 downto 28) & PC_SLL_OUT when "10",
+                        ALU_RESULT  when others;
+
+    
 
     pc_reg    : entity work.ee_register(struct)
         generic map (
@@ -209,13 +240,13 @@ begin
 
     ee_ALU_inst: entity work.ee_ALU
      port map(
-        A => open,
-        B => open,
-        SHAMT => open,
-        ALUOp => open,
-        R => open,
+        A        => ALU_A,
+        B        => ALU_B,
+        SHAMT    => IR_SHAMT,
+        ALUOp    => ALUOp,
+        R        => ALU_RESULT,
         Overflow => open,
-        Zero => open
+        Zero     => ALU_ZERO
     );
 
     sign_extender : entity work.ee_sign_extender(rtl)
@@ -225,15 +256,15 @@ begin
             data_out => IMDT_SLL_OUT
     );
 
-    shifter_PC   : entity work.ee_shifter(rtl)
+    shifter_IMDT   : entity work.ee_shifter(rtl)
         generic map (
             IN_WIDTH  => 32,
             OUT_WIDTH => 32,
             SHAMT     => 2
         )
         port map(
-            data_in   => open,
-            data_out  => open
+            data_in   => IR_IMDT,
+            data_out  => SGN_EXT_OUT
     );
 
     shifter_J    : entity work.ee_shifter(rtl)
@@ -243,8 +274,8 @@ begin
             SHAMT     => 2
         )
         port map(
-            data_in   => open,
-            data_out  => open
+            data_in   => IR_J,
+            data_out  => PC_SLL_OUT
     );
 
     regfile      : entity work.ee_regfile_behav(behavioral)
@@ -264,24 +295,26 @@ begin
     
     multiplier  : entity work.ee_mult_top(structural)
         port map(
-            A   => open,
-            B   => open,
-            CLK => open,
-            RST => open,
-            R   => open,
-            done=> open
+            A    => ALU_A,
+            B    => ALU_B,
+            CLK  => CLK,
+            RST  => MultDisable,
+            R    => MULT_RESULT,
+            done => MultFinished
         );
+    
+
 
     HI_reg    : entity work.ee_register(struct)
         generic map (
             REG_WIDTH => 32
         )
         port map(
-            LOAD  => open,
-            CLK   => open,
-            P_IN  => open,
-            RST   => open,
-            P_OUT => open
+            LOAD  => '1',
+            CLK   => CLK,
+            P_IN  => HI_REG_IN,
+            RST   => RST,
+            P_OUT => LO_REG_OUT
     );
 
     LO_reg    : entity work.ee_register(struct)
@@ -289,11 +322,11 @@ begin
             REG_WIDTH => 32
         )
         port map(
-            LOAD  => open,
-            CLK   => open,
-            P_IN  => open,
-            RST   => open,
-            P_OUT => open
+            LOAD  => '1',
+            CLK   => CLK,
+            P_IN  => LO_REG_IN,
+            RST   => RST,
+            P_OUT => LO_REG_OUT
     );
 
 
