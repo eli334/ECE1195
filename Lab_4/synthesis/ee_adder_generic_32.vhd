@@ -35,14 +35,6 @@ entity ee_adder_generic_32 is
 end ee_adder_generic_32;
 
 architecture Structural of ee_adder_generic_32 is
-    component ee_adder_full_adder
-        port (  A       : IN STD_LOGIC;
-                B       : IN STD_LOGIC;
-                Cin     : IN STD_LOGIC;
-                sum     : OUT STD_LOGIC;
-                Cout    : OUT STD_LOGIC
-             );
-    end component;
     signal carry : STD_LOGIC_VECTOR(N downto 0); -- one bit longer for final Cout
     signal onesComplement : STD_LOGIC_VECTOR(N-1 downto 0);
 begin
@@ -51,7 +43,8 @@ begin
     onesComplement <= numB xor (numB'range => sub);
     
     gen_adders : for i in 0 to N-1 generate
-        U   : ee_adder_full_adder port map(
+        U   : entity work.ee_adder_full_adder(Combinational) 
+        port map(
                 A => numA(i),
                 B => onesComplement(i),
                 Cin => carry(i),

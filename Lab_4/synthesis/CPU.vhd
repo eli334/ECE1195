@@ -1,6 +1,5 @@
 LIBRARY ieee;
 USE ieee.std_logic_1164.all;
-USE ieee.std_logic_arith.all;
 
 entity CPU IS
    port( 
@@ -24,16 +23,14 @@ begin
         port map(
             RST         => Reset,
             CLK         => Clock,
-            memOut      => MemoryDataIn,
+            memOut      => MemoryDataOut,
             dataAddr    => MemoryAddress,
-            memIn       => MemoryDataOut,
+            memIn       => MemoryDataIn,
 
 
             PCWriteCond => PCWriteCond,
             PCWrite     => PCWrite,
             IorD        => IorD,
-            MemRead     => open,
-            MemWrite    => MemWrite,
             MemtoReg    => MemtoReg,
             IRWrite     => IRWrite,
             ALUSrcA     => ALUSrcA,
@@ -44,7 +41,8 @@ begin
             PCSource    => PCSource,
             ALUOp       => ALUOp,
             Op          => Op,
-            Funct       => Funct
+            Funct       => Funct,
+            MultDisable => '1'
 
         );
     control : entity work.mips_32bit_fsm(rtl)

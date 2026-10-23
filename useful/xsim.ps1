@@ -53,7 +53,7 @@ function Get-CompileOrder([string[]]$Files, [string]$TopUnit) {
 # Keep Vivado's generated junk (xsim.dir, logs, .pb, .jou) out of the source folders
 $build = Join-Path $LabDir "build"
 New-Item -ItemType Directory -Force $build | Out-Null
-$TclPath = if ($Tcl) { (Resolve-Path $Tcl).Path } else { $null }
+$TclPath = if ($Tcl) { (Resolve-Path $Tcl).Path -replace '\\', '/' } else { $null }
 Push-Location $build
 try {
     $found = @(
@@ -76,7 +76,7 @@ try {
         "log_wave -r /`nrun all" | Set-Content $tcl
         & "$VivadoBin\xsim.bat" "${Top}_sim" -gui -tclbatch gui.tcl
     } elseif ($TclPath) {
-        & "$VivadoBin\xsim.bat" "${Top}_sim" -tclbatch $TclPath
+        & "$VivadoBin\xsim.bat" "${Top}_sim" -tclbatch $TclPath -onerror quit
     } else {
         & "$VivadoBin\xsim.bat" "${Top}_sim" -runall
     }

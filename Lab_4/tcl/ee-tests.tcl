@@ -1,6 +1,6 @@
 set TB     /ee_cpu_tb
 set CPU    $TB/U_0
-set REGS   $CPU/regfile/regs     ;# register file array
+set REGS   $CPU/datapath/regfile/regs     ;# register file array
 set STATE  $CPU/control/state    ;# FSM state signal
 set MAXCYC 40                    ;# give up after this many cycles
 

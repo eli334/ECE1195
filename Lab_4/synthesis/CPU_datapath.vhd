@@ -18,8 +18,6 @@ entity CPU_datapath IS
         PCWriteCond : in STD_LOGIC;
         PCWrite     : in STD_LOGIC;
         IorD        : in STD_LOGIC;
-        MemRead     : in STD_LOGIC;
-        MemWrite    : in STD_LOGIC;
         MemtoReg    : in STD_LOGIC;
         IRWrite     : in STD_LOGIC;
         PCSource    : in STD_LOGIC_VECTOR(1 downto 0);
@@ -56,8 +54,8 @@ architecture datapath of CPU_datapath is
     signal IR_J       : STD_LOGIC_VECTOR(25 downto 0);
     
     -- regfile
-    signal REGF_ADDR_IN_1  : STD_LOGIC_VECTOR(31 downto 0);
-    signal REGF_ADDR_IN_2  : STD_LOGIC_VECTOR(31 downto 0);
+    signal REGF_ADDR_IN_1  : STD_LOGIC_VECTOR(4 downto 0);
+    signal REGF_ADDR_IN_2  : STD_LOGIC_VECTOR(4 downto 0);
     signal REGF_DATA_OUT_1 : STD_LOGIC_VECTOR(31 downto 0);
     signal REGF_DATA_OUT_2 : STD_LOGIC_VECTOR(31 downto 0);
     signal REGF_WRITE_ADDR : STD_LOGIC_VECTOR(4 downto 0);
@@ -144,7 +142,7 @@ begin
     REGFILE_WD_MUX_OUT <= MEM_REG_OUT when MemtoReg = '1' else ALU_REG_OUT;
     
     -- regfile Write Register 
-    REGFILE_WR_MUX_OUT <=  IR_IMDT when RegDst = '1' else IR_RT;
+    REGFILE_WR_MUX_OUT <=  IR_RD when RegDst = '1' else IR_RT;
 
     -- A mux
     ALU_A_MUX_OUT <= A_REG_OUT when ALUSrcA = '1' else PCValueOut; 
@@ -263,7 +261,7 @@ begin
             SHAMT     => 2
         )
         port map(
-            data_in   => IR_IMDT,
+            data_in   => IMDT_SLL_OUT,
             data_out  => SGN_EXT_OUT
     );
 

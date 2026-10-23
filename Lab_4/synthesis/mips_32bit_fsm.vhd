@@ -203,7 +203,7 @@ begin
                 MemRead  <= '1';
                 IRWrite  <= '1';
                 ALUSrcA  <= '0';
-                ALUSrcB  <= "01"; -- mux 1 is tied to 4 for PC + 4
+                ALUSrcB  <= "01"; -- mux 1 is tied to x"00000004" for PC + 4
                 ALUOp    <= ALU_ADD; -- + for PC + 4
                 PCSource <= "00";
                 PCWrite  <= '1';

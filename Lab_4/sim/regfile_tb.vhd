@@ -49,7 +49,7 @@ begin
         
         wait until falling_edge(clk);
 
-        for i in 0 to 2**writeSelect'length-1 loop
+        for i in 1 to 2**writeSelect'length-1 loop
             byteVal := std_logic_vector(to_unsigned(i + 1, 8));
             dataIn <= byteVal & byteVal & byteVal & byteVal;
             
@@ -61,7 +61,7 @@ begin
                 report "Data was not written to register " & integer'image(i);
         end loop;
         
-        for i in 2**writeSelect'length-1 downto 0 loop
+        for i in 2**writeSelect'length-1 downto 1 loop
             byteVal := std_logic_vector(to_unsigned(i + 1, 8));
             read2 <= std_logic_vector(to_unsigned(i, read2'length));
 
@@ -76,7 +76,7 @@ begin
         wait for CLK_PERIOD / 8;
         RST <= '0';
 
-         for i in 0 to 2**writeSelect'length-1 loop
+         for i in 1 to 2**writeSelect'length-1 loop
             read1       <= std_logic_vector(to_unsigned(i, read1'length));
             wait for CLK_PERIOD/128; -- async and instant in sim
             
@@ -85,6 +85,20 @@ begin
         end loop;
         
         wait until falling_edge(clk);
+
+        regWrite    <= '1';
+        writeSelect <= "00000";
+        dataIn      <= x"1234ABCD";
+        read1       <= "00000";
+        wait for CLK_PERIOD;
+
+        regWrite    <= '0';
+        
+        assert(data1 = x"00000000")
+            report "$0 did not block write" severity error;
+        
+        wait until falling_edge(clk);
+        
 
         report "Simulation finished.";
         simDone <= true;
