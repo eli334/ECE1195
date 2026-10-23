@@ -7,8 +7,8 @@ use ieee.std_logic_1164.all;
 
 entity mips_32bit_fsm is
     port(
-        clk         : in  STD_LOGIC;
-        reset       : in  STD_LOGIC;
+        CLK         : in  STD_LOGIC;
+        RST       : in  STD_LOGIC;
         Op          : in  STD_LOGIC_VECTOR(5 downto 0);
         Funct       : in  STD_LOGIC_VECTOR(5 downto 0); -- SPECIAL/SPECIAL2 ops
 
@@ -20,9 +20,9 @@ entity mips_32bit_fsm is
         MemtoReg    : out STD_LOGIC;
         IRWrite     : out STD_LOGIC;
         PCSource    : out STD_LOGIC_VECTOR(1 downto 0);
-        ALUOp       : out STD_LOGIC_VECTOR(1 downto 0);
-        ALUSrcB     : out STD_LOGIC_VECTOR(1 downto 0);
+        ALUOp       : out STD_LOGIC_VECTOR(3 downto 0);
         ALUSrcA     : out STD_LOGIC;
+        ALUSrcB     : out STD_LOGIC_VECTOR(1 downto 0);
         RegWrite    : out STD_LOGIC;
         RegDst      : out STD_LOGIC;
         ExtOp       : out STD_LOGIC
@@ -32,7 +32,7 @@ end entity;
 architecture rtl of mips_32bit_fsm is
 
     -- Build an enumerated type for the state machine
-    type state_type is (FETCH, DECODE, EXECUTE, MEM, WRITEBACK);
+    type state_type is (FETCH, DECODE, EXECUTE, MEM, WRITEBACK, WAIT_DONE, HILO_WB);
     type instruction is (I_ADDI, I_ADDU, I_AND, I_BNE, I_CLO, 
                           I_J, I_JR, I_LH, I_LUI, I_LW, 
                           I_MFHI, I_MFLO, I_MULTU, I_ORI, I_SLL, 
@@ -45,7 +45,7 @@ architecture rtl of mips_32bit_fsm is
 
 begin
     -- Logic to advance to the next state
-    process (clk, reset)
+    process (CLK, RST)
     constant OP_ADDI : STD_LOGIC_VECTOR(5 downto 0) := "001000";
     constant OP_ORI  : STD_LOGIC_VECTOR(5 downto 0) := "001101";
     constant OP_SLTI : STD_LOGIC_VECTOR(5 downto 0) := "001010";
@@ -73,10 +73,10 @@ begin
     constant SPECIAL2: STD_LOGIC_VECTOR(5 downto 0) := "011100";
     constant SP2_CLO : STD_LOGIC_VECTOR(5 downto 0) := "100001";
     begin
-        if reset = '1' then
+        if RST = '1' then
             state <= FETCH;
             instr <= I_NOP;
-        elsif (rising_edge(clk)) then
+        elsif (rising_edge(CLK)) then
             case state is
                 when FETCH => 
                     state <= DECODE;
@@ -106,7 +106,8 @@ begin
                                 when SP_SRA  => instr <= I_SRA;
                                 when SP_SUB  => instr <= I_SUB;
                                 when others => 
-                                    report "SPECIAL function not implemented." severity warning;
+                                    report "SPECIAL function not implemented."
+                                    severity warning;
                                     state <= FETCH;
                             end case;
                                 
@@ -115,20 +116,34 @@ begin
                                 when SP2_CLO 
                                     => instr <= I_CLO;
                                 when others => 
-                                    report "SPECIAL2 function not implemented." severity warning;
+                                    report "SPECIAL2 function not implemented."
+                                    severity warning;
                                     state <= FETCH; 
                             end case;
                         when others => 
-                            report "Instruction not implemented." severity warning; 
-                        end case;
-                        state <= FETCH; -- not implemented yet
+                            report "Instruction not implemented." 
+                            severity warning; 
+                            state <= FETCH;
+                    end case;
                 when EXECUTE => 
-                    state <= MEM;
+                    state <= WRITEBACK;
                     case instr is
                         when I_LW | I_LH | I_SW => state <= MEM;
-                        when I_ADDI | I_ORI | I_SLTI => 
-                when MEM
-                    => state <= WRITEBACK;
+                        when I_BNE | I_J | I_JR => state <= FETCH;
+                        when I_MULTU            => state <= WAIT_DONE;
+                        when others => null;
+                    end case;
+                when MEM =>
+                    case instr is
+                        when I_SW => state <= FETCH;
+                        when others => state <= WRITEBACK;
+                    end case;
+                when WRITEBACK => state <= FETCH;
+                when WAIT_DONE => state <= HILO_WB;
+                when HILO_WB   => state <= FETCH;
+                when others =>
+                    report "State not recognized." severity warning;
+                    state <= FETCH;
             end case;
         end if;
     end process;
@@ -136,60 +151,100 @@ begin
     -- Output depends solely on the current state
     process (state, instr)
         -- ALU constants
-    constant ALU_LGIC: STD_LOGIC_VECTOR(1 downto 0) := "00";
-    constant ALU_AND : STD_LOGIC_VECTOR(1 downto 0) := "00";
-    constant ALU_OR  : STD_LOGIC_VECTOR(1 downto 0) := "01";
-    constant ALU_XOR : STD_LOGIC_VECTOR(1 downto 0) := "10";
-    constant ALU_NOR : STD_LOGIC_VECTOR(1 downto 0) := "11";
-
-    constant ALU_ARTH: STD_LOGIC_VECTOR(1 downto 0) := "01";
+    constant UNIT_LOGIC : STD_LOGIC_VECTOR(1 downto 0) := "00";
+    constant UNIT_ARITH : STD_LOGIC_VECTOR(1 downto 0) := "01";
+    constant UNIT_CMP   : STD_LOGIC_VECTOR(1 downto 0) := "10";
+    constant UNIT_SHIFT : STD_LOGIC_VECTOR(1 downto 0) := "11";
     
-    constant ALU_CMP : STD_LOGIC_VECTOR(1 downto 0) := "10";
+    constant ALU_AND    : STD_LOGIC_VECTOR(3 downto 0) := UNIT_LOGIC & "00";
+    constant ALU_OR     : STD_LOGIC_VECTOR(3 downto 0) := UNIT_LOGIC & "01";
+    -- constant ALU_XOR    : STD_LOGIC_VECTOR(3 downto 0) := UNIT_LOGIC & "10";
+    -- constant ALU_NOR    : STD_LOGIC_VECTOR(3 downto 0) := UNIT_LOGIC & "11";
+    
+    constant ALU_ADD    : STD_LOGIC_VECTOR(3 downto 0) := UNIT_ARITH & "00";
+    constant ALU_ADDU   : STD_LOGIC_VECTOR(3 downto 0) := UNIT_ARITH & "01";
+    constant ALU_SUB    : STD_LOGIC_VECTOR(3 downto 0) := UNIT_ARITH & "10";
+    -- constant ALU_SUBU   : STD_LOGIC_VECTOR(3 downto 0) := UNIT_ARITH & "11";
+    
+    constant ALU_SLT    : STD_LOGIC_VECTOR(3 downto 0) := UNIT_CMP & "10";
+    -- constant ALU_SLTU   : STD_LOGIC_VECTOR(3 downto 0) := UNIT_CMP & "11";
+    
+    constant ALU_SLL    : STD_LOGIC_VECTOR(3 downto 0) := UNIT_SHIFT & "00";
+    -- constant ALU_SRL    : STD_LOGIC_VECTOR(3 downto 0) := UNIT_SHIFT & "10";
+    constant ALU_SRA    : STD_LOGIC_VECTOR(3 downto 0) := UNIT_SHIFT & "11";
+
+    -- constant ALU_SLTU   : STD_LOGIC_VECTOR(3 downto 0) := UNIT_CMU & "11";
+
+    
     -- needs ARITH unit for subtraction; not sure how that's gonna work yet
 
-    constant ALU_SHFT: STD_LOGIC_VECTOR(1 downto 0) := "11";
-    constant SHFT_SLL: STD_LOGIC_VECTOR(1 downto 0) := "00";
-    constant SHFT_SLA: STD_LOGIC_VECTOR(1 downto 0) := "01";
-    constant SHFT_SRL: STD_LOGIC_VECTOR(1 downto 0) := "10";
-    constant SHFT_SRA: STD_LOGIC_VECTOR(1 downto 0) := "11";
     begin
-        PCWriteCond <= '0';
+        -- PC
         PCWrite     <= '0';
-        IorD        <= '0';
+        PCWriteCond <= '0';  -- PC is precalculated for branches to save an instruction cycle
+        PCSource    <= "00"; -- 00; PC+4, 01; ALUOut branch, 10: jump address 
+        -- memory
+        IorD        <= '0';  -- 0; PC, 1; ALUOut
         MemRead     <= '0';
         MemWrite    <= '0';
         MemtoReg    <= '0';
-        IRWrite     <= '0';
-        PCSource    <= "00";
-        ALUOp       <= ALU_ADD;
-        ALUSrcB     <= "00";
+        -- registers
+        IRWrite     <= '0'; -- '1' for fetch; latches instruction on CLK
+        RegDst      <= '0'; -- 0; rt, 1; rd
+        RegWrite    <= '0'; -- only for writeback
+        -- ALU
+        ALUOp       <= ALU_ADD; -- sane default
         ALUSrcA     <= '0';
-        ExtOp       <= '0';
-        RegWrite    <= '0';
-        RegDst      <= '0';
+        ALUSrcB     <= "00";
+        ExtOp       <= '0'; -- for I-type sign extending; 0; sign-extend, 1; zero-extend (for ORI)
         case state is
             when FETCH =>
                 IorD     <= '0';
                 MemRead  <= '1';
                 IRWrite  <= '1';
                 ALUSrcA  <= '0';
-                ALUSrcB  <= "01"; -- 4 for PC + 4
-                ALUOp    <= "01"; -- + for PC + 4
+                ALUSrcB  <= "01"; -- mux 1 is tied to 4 for PC + 4
+                ALUOp    <= ALU_ADD; -- + for PC + 4
                 PCSource <= "00";
                 PCWrite  <= '1';
             when EXECUTE =>
-                case instr is =>
-                    -- Immediate
-                    when I_ADDI
-                        =>
-            when ADDI_EX => 
-                ALUOp <= "01";
-            when ORI_EX => 
-                ALUOp <= "00";
-            when SLTI_EX =>
-                ALUOp <= "11";
-            when others =>
-                report "Opcode not implemented yet." severity note;
+                case instr is
+                    when I_ADDI  => -- Immediate first
+                        ALUOp   <= ALU_ADD;
+                        ALUSrcA <= '1'; -- rs is muxed to 1
+                        ALUSrcB <= "10"; -- mux 2 is sign extended I, not SLL'd by 2
+                        ExtOp   <= '0';
+                    when I_ORI   =>
+                        ALUOp   <= ALU_OR;
+                        ALUSrcA <= '1'; -- rs is muxed to 1
+                        ALUSrcB <= "10"; -- mux 2 is sign extended I, not SLL'd by 2
+                        ExtOp   <= '1';
+                    when I_SLTI  => null;
+                    when I_LUI   => null;
+                    when I_LW    => null;
+                    when I_LH    => null;
+                    when I_SW    => null;
+                    when I_BNE   => null;
+                    -- R-type
+                    when I_ADDU  => null;
+                    when I_AND   => null;
+                    when I_SUB   => null;
+                    when I_SLL   => null;
+                    when I_SLLV  => null;
+                    when I_SRA   => null;
+                    when I_JR    => null;
+                    when I_MULTU => null;
+                    when I_MFHI  => null;
+                    when I_MFLO  => null;
+                    -- J-type (just JMP)
+                    when I_J     => null;
+                    -- Other?
+                    when I_CLO   => null;
+                    -- when BLTZAL  =>
+                    when others  => null;
+                end case;
+            when others => 
+                report "State not implemented yet." severity warning;
         end case;
     end process;
     

@@ -1,4 +1,4 @@
 standard = "1993"
 
 [libraries]
-lab.files = ["synthesis/*.vhd", "sim/*.vhd"]
+lab4.files = ["synthesis/**/*.vhd", "sim/**/*.vhd"]

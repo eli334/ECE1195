@@ -51,6 +51,73 @@
                 "reveal": "always",
                 "clear": true
             },
+        },
+        {
+            "label": "xsim: run Tcl script",
+            "type": "process",
+            "command": "powershell.exe",
+            "args": [
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                "${workspaceFolder}/../useful/xsim.ps1",
+                "-Top",
+                "${input:simTop}",
+                "-LabDir",
+                "${workspaceFolder}",
+                "-Tcl",
+                "${input:tclScript}"
+            ],
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "clear": true
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            }
+        },
+        {
+        "label": "xsim: current file as top (compile all files)",
+        "type": "process",
+        "command": "powershell.exe",
+        "args": [
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            "${workspaceFolder}/../useful/xsim.ps1",
+            "-Top",
+            "${fileBasenameNoExtension}",
+            "-LabDir",
+            "${workspaceFolder}",
+            "-All"
+        ],
+        "problemMatcher": [],
+        "presentation": {
+            "reveal": "always",
+            "clear": true
+        },
+          "group": {
+            "kind": "build",
+            "isDefault": false
+        }
+    }
+    ],
+    "inputs": [
+        {
+            "id": "simTop",
+            "type": "promptString",
+            "description": "Simulation top entity",
+            "default": "ee_cpu_tb"
+        },
+        {
+            "id": "tclScript",
+            "type": "promptString",
+            "description": "Tcl script, relative to the lab folder",
+            "default": "tcl/ee-tests.tcl"
         }
     ]
 }
