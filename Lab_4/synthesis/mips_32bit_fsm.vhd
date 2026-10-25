@@ -238,9 +238,17 @@ begin
                         ExtOp   <= '1';
                     when I_SLTI  => null;
                     when I_LUI   => null;
-                    when I_LW    => null;
+                    when I_LW    =>
+                        ALUOp   <= ALU_ADD;
+                        ALUSrcA <= '1';
+                        ALUSrcB <= "10";
+                        ExtOp   <= '0';
                     when I_LH    => null;
-                    when I_SW    => null;
+                    when I_SW    => 
+                        ALUOp   <= ALU_ADD;
+                        ALUSrcA <= '1';
+                        ALUSrcB <= "10";
+                        ExtOp   <= '0';
                     when I_BNE   => null;
                     -- R-type
                     when I_ADDU  => null;
@@ -261,9 +269,16 @@ begin
                     when others  => null;
                 end case;
             when MEM =>
-
-            null;
-            when WRITEBACK => 
+                case instr is
+                    when I_SW =>
+                        MemWrite <= '1';
+                        IorD     <= '1';
+                    when I_LW =>
+                        MemWrite <= '0';
+                        IorD     <= '1';
+                    when others => null;
+                end case;
+            when WRITEBACK =>   
                 RegWrite <= '1';
                 case instr is
                     when I_ADDI | I_ORI | I_SLTI | I_LUI | I_LW | I_LH => RegDst <= '0';
