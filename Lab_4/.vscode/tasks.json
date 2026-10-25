@@ -50,7 +50,7 @@
             "presentation": {
                 "reveal": "always",
                 "clear": true
-            },
+            }
         },
         {
             "label": "xsim: run Tcl script",
@@ -68,6 +68,29 @@
                 "${workspaceFolder}",
                 "-Tcl",
                 "${input:tclScript}"
+            ],
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "clear": true
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            }
+        },
+        {
+            "label": "xsim: run Tcl script w/ GUI",
+            "type": "process",
+            "command": "powershell.exe",
+            "args": [
+                "-NoProfile",
+                "-ExecutionPolicy", "Bypass",
+                "-File", "${workspaceFolder}/../useful/xsim.ps1",
+                "-Top", "${input:simTop}",
+                "-LabDir", "${workspaceFolder}",
+                "-Tcl", "${input:tclScript}",
+                "-Gui"
             ],
             "problemMatcher": [],
             "presentation": {

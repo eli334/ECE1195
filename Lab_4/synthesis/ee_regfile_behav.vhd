@@ -27,7 +27,6 @@ architecture behavioral of ee_regfile_behav is
 begin
     data1 <= regs(to_integer(unsigned(read1)));
     data2 <= regs(to_integer(unsigned(read2)));
-    regs(0) <= (others => '0');
 
     process(CLK, RST)
     begin
@@ -37,6 +36,9 @@ begin
             end loop;
         elsif(rising_edge(CLK)) then
             if(regWrite = '1') then
+                report "regfile write: $" & integer'image(to_integer(unsigned(writeSelect)))
+                & " <= " & integer'image(to_integer(signed(dataIn)));
+                
                 if(writeSelect = "00000") then
                     report("Attempted write to $0; blocked") severity warning;
                 else

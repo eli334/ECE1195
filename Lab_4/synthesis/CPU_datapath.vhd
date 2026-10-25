@@ -54,14 +54,13 @@ architecture datapath of CPU_datapath is
     signal IR_J       : STD_LOGIC_VECTOR(25 downto 0);
     
     -- regfile
-    signal REGF_ADDR_IN_1  : STD_LOGIC_VECTOR(4 downto 0);
-    signal REGF_ADDR_IN_2  : STD_LOGIC_VECTOR(4 downto 0);
     signal REGF_DATA_OUT_1 : STD_LOGIC_VECTOR(31 downto 0);
     signal REGF_DATA_OUT_2 : STD_LOGIC_VECTOR(31 downto 0);
     signal REGF_WRITE_ADDR : STD_LOGIC_VECTOR(4 downto 0);
     signal REGF_DATA_IN    : STD_LOGIC_VECTOR(31 downto 0);
 
     -- memory register
+    signal MEM_ADDR_IN : STD_LOGIC_VECTOR(31 downto 0);
     signal MEM_REG_OUT : STD_LOGIC_VECTOR(31 downto 0);
     
     -- A register
@@ -81,9 +80,9 @@ architecture datapath of CPU_datapath is
     signal LO_REG_OUT  : STD_LOGIC_VECTOR(31 downto 0);
 
     -- PC signals ((PCWriteCond AND ALU_ZERO) OR PCWrite)
-    signal PCLoad    : STD_LOGIC;
-    signal PCValueIn : STD_LOGIC_VECTOR(31 downto 0); -- PC mux from (0) ALU, (1) ALUOut, (2) J<<2
-    signal PCValueOut: STD_LOGIC_VECTOR(31 downto 0);
+    signal PC_LOAD    : STD_LOGIC;
+    signal PC_VALUE_IN : STD_LOGIC_VECTOR(31 downto 0); -- PC mux from (0) ALU, (1) ALUOut, (2) J<<2
+    signal PC_VALUE_OUT: STD_LOGIC_VECTOR(31 downto 0);
 
     --- ALU signals
     signal ALU_A        : STD_LOGIC_VECTOR(31 downto 0);
@@ -110,13 +109,10 @@ architecture datapath of CPU_datapath is
     -- regfile Write Register
     signal REGFILE_WR_MUX_OUT : STD_LOGIC_VECTOR(4 downto 0);
     
-    -- ALU A
-    signal ALU_A_MUX_OUT      : STD_LOGIC_VECTOR(31 downto 0);
-    -- ALU B
-    signal ALU_B_MUX_OUT      : STD_LOGIC_VECTOR(31 downto 0);
-    
 begin
-    memOut     <= IR_IN;
+    --- memory logic
+    IR_IN      <= memIn;
+    memOut     <= B_REG_OUT;
 
     IR_OP      <= IR_OUT(31 downto 26);
     Op         <= IR_OP; -- straight into FSM
@@ -132,7 +128,7 @@ begin
 
     IR_J <= IR_OUT(25 downto 0);
 
-    PCLoad <= (PCWriteCond and ALU_ZERO) or PCWrite;
+    PC_LOAD <= (PCWriteCond and ALU_ZERO) or PCWrite;
 
     HI_REG_IN <= MULT_RESULT(63 downto 32);
     LO_REG_IN <= MULT_RESULT(31 downto 0);
@@ -145,11 +141,11 @@ begin
     REGFILE_WR_MUX_OUT <=  IR_RD when RegDst = '1' else IR_RT;
 
     -- A mux
-    ALU_A_MUX_OUT <= A_REG_OUT when ALUSrcA = '1' else PCValueOut; 
+    ALU_A <= A_REG_OUT when ALUSrcA = '1' else PC_VALUE_OUT; 
     
     -- B mux
     with ALUSrcB select
-        ALU_B_MUX_OUT <=    B_REG_OUT     when "00",
+        ALU_B <=    B_REG_OUT     when "00",
                             x"00000004"   when "01",
                             SGN_EXT_OUT   when "10",
                             IMDT_SLL_OUT  when "11",
@@ -157,23 +153,24 @@ begin
 
     -- PC mux
     with PCSource select
-        PCValueIn <=    ALU_RESULT  when "00",
+        PC_VALUE_IN <=    ALU_RESULT  when "00",
                         ALU_REG_OUT when "01",
-                        PCValueOut(31 downto 28) & PC_SLL_OUT when "10",
+                        PC_VALUE_OUT(31 downto 28) & PC_SLL_OUT when "10",
                         ALU_RESULT  when others;
 
-    
+    -- memAddr mux
+    dataAddr <= ALU_REG_OUT when IorD = '1' else PC_VALUE_OUT; 
 
     pc_reg    : entity work.ee_register(struct)
         generic map (
             REG_WIDTH => 32
         )
         port map(
-            LOAD  => PCLoad,
+            LOAD  => PC_LOAD,
             CLK   => CLK,
-            P_IN  => PCValueIn,
+            P_IN  => PC_VALUE_IN,
             RST   => RST,
-            P_OUT => PCValueOut
+            P_OUT => PC_VALUE_OUT
     );
 
     instr_reg : entity work.ee_register(struct)
@@ -221,7 +218,7 @@ begin
             CLK   => CLK,
             P_IN  => REGF_DATA_OUT_1,
             RST   => RST,
-            P_OUT => ALU_A
+            P_OUT => A_REG_OUT
     );
 
     B_reg : entity work.ee_register(struct)
@@ -233,7 +230,7 @@ begin
             CLK   => CLK,
             P_IN  => REGF_DATA_OUT_2,
             RST   => RST,
-            P_OUT => ALU_B
+            P_OUT => B_REG_OUT
     );
 
     ee_ALU_inst: entity work.ee_ALU
@@ -251,7 +248,7 @@ begin
         port map(
             data_in  => IR_IMDT,
             ExtOp    => ExtOp, -- for ORI
-            data_out => IMDT_SLL_OUT
+            data_out => SGN_EXT_OUT
     );
 
     shifter_IMDT   : entity work.ee_shifter(rtl)
@@ -261,8 +258,8 @@ begin
             SHAMT     => 2
         )
         port map(
-            data_in   => IMDT_SLL_OUT,
-            data_out  => SGN_EXT_OUT
+            data_in   => SGN_EXT_OUT,
+            data_out  => IMDT_SLL_OUT
     );
 
     shifter_J    : entity work.ee_shifter(rtl)
@@ -278,12 +275,12 @@ begin
 
     regfile      : entity work.ee_regfile_behav(behavioral)
         port map(
-            read1       => REGF_ADDR_IN_1,
+            read1       => IR_RS,
             data1       => REGF_DATA_OUT_1,
-            read2       => REGF_ADDR_IN_2,
+            read2       => IR_RT,
             data2       => REGF_DATA_OUT_2,
-            writeSelect => REGF_WRITE_ADDR,
-            dataIn      => REGF_DATA_IN,
+            writeSelect => REGFILE_WR_MUX_OUT,
+            dataIn      => REGFILE_WD_MUX_OUT,
             regWrite    => RegWrite,
             RST         => RST,
             CLK         => CLK
@@ -293,8 +290,8 @@ begin
     
     multiplier  : entity work.ee_mult_top(structural)
         port map(
-            A    => ALU_A,
-            B    => ALU_B,
+            A    => A_REG_OUT,
+            B    => B_REG_OUT,
             CLK  => CLK,
             RST  => MultDisable,
             R    => MULT_RESULT,

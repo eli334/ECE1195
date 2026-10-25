@@ -71,7 +71,10 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "xelab failed" }
 
     Write-Host "== xsim: running ${Top}_sim" -ForegroundColor Cyan
-    if ($Gui) {
+    if ($Gui -and $TclPath) {
+        $env:EE_GUI = "1"
+        & "$VivadoBin\xsim.bat" "${Top}_sim" -gui -tclbatch $TclPath
+    } elseif ($Gui) {
         $tcl = Join-Path $build "gui.tcl"
         "log_wave -r /`nrun all" | Set-Content $tcl
         & "$VivadoBin\xsim.bat" "${Top}_sim" -gui -tclbatch gui.tcl

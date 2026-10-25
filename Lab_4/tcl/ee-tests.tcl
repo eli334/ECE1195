@@ -2,26 +2,39 @@ set TB     /ee_cpu_tb
 set CPU    $TB/U_0
 set REGS   $CPU/datapath/regfile/regs     ;# register file array
 set STATE  $CPU/control/state    ;# FSM state signal
+set INSTR  $CPU/control/instr    ;# decoded instruction (only used for the GUI waveform)
 set MAXCYC 40                    ;# give up after this many cycles
+
+# GUI mode is set by xsim.ps1 (-Gui -Tcl). All tests run back to back in one
+# waveform, each separated by a 20 ns reset gap; the summary lists start times.
+set GUI [info exists ::env(EE_GUI)]
 
 set results {}
 
 proc reg {n} { return "$::REGS\[$n\]" }
 
+# Current simulation time, for finding each test in the waveform
+proc now {} {
+    if {[catch {current_time} t]} { return "?" }
+    return $t
+}
+
 # Numeric compare of two hex strings; anything with U/X just compares unequal
 proc same {a b} { expr {"0x$a" == "0x$b"} }
 
-# Reset, force source registers ({n value n value ...}), put instr on MemoryDataIn
+# Hold reset for a 20 ns gap, force source registers ({n value n value ...}),
+# and put instr on MemoryDataIn. Reset clears the PC, register file, and FSM,
+# so each test starts clean without restarting the simulation.
 proc setup {instr regs} {
-    restart
     remove_forces -all
-    add_force $::TB/Clock {0 0ns} {1 5ns} -repeat_every 10ns
-    add_force $::TB/Reset {1 0ns} {0 10ns}
+    add_force $::TB/Clock {0 0ns} {1 5ns} -repeat_every 10ns   ;# re-added: -all removes it
+    add_force $::TB/Reset {1 0ns} {0 20ns}
     set ::memf [add_force $::TB/MemoryDataIn -radix hex [list $instr 0ns]]
     foreach {n val} $regs {
         add_force [reg $n] -radix hex [list $val 0ns]
     }
-    run 10ns    ;# reset released; the first FETCH edge is at 15 ns
+    set ::tstart [now]
+    run 20ns    ;# reset released; the first FETCH edge is 5 ns later
 }
 
 # Run until the FSM returns to FETCH. Returns the cycle count, or -1 on timeout.
@@ -48,6 +61,7 @@ proc run_instr {{memdata ""}} {
 }
 
 # 2 cycles means DECODE went straight back to FETCH: the opcode wasn't recognized
+# (or the IR never loaded a real instruction)
 proc record {name ok cycles detail} {
     if {$cycles == -1} {
         set status TIMEOUT
@@ -58,7 +72,7 @@ proc record {name ok cycles detail} {
     } else {
         set status FAIL
     }
-    lappend ::results [list $name $status $cycles $detail]
+    lappend ::results [list $name $status $cycles $::tstart $detail]
 }
 
 # Check a register after the instruction
@@ -87,6 +101,17 @@ proc test_pc {name instr regs expected} {
     record $name [same $pc $expected] $c "PC = $pc (expected $expected)"
 }
 
+# ---- Start ----
+restart    ;# once, so a rerun from the GUI starts at time 0
+if {$GUI} {
+    log_wave -r /
+    # Show the useful signals; catch in case a path doesn't exist yet
+    foreach sig [list $TB/Clock $TB/Reset $STATE $INSTR \
+                      $TB/MemoryAddress $TB/MemoryDataIn $TB/MemoryDataOut $TB/MemWrite] {
+        catch {add_wave $sig}
+    }
+}
+
 # ---- Tests ----
 #          name  instruction  forced regs                  check
 test_reg   ADDI  20430005  {2 0000000A}                   3 0000000F  ;# addi $3, $2, 5
@@ -103,11 +128,13 @@ test_pc    BNE   14430003  {2 00000001 3 00000002}        00000010            ;#
 set passed 0
 puts "\n========== Instruction tests =========="
 foreach r $results {
-    lassign $r name status cycles detail
+    lassign $r name status cycles tstart detail
     if {$status eq "PASS"} { incr passed }
     set note ""
     if {$cycles > 5 && $name ne "MULTU"} { set note "  <-- over the 5-cycle limit" }
-    puts [format "%-6s %-12s %3s cycles   %s%s" $name $status $cycles $detail $note]
+    puts [format "%-6s %-12s %3s cycles   starts @ %-10s %s%s" \
+              $name $status $cycles $tstart $detail $note]
 }
 puts "$passed / [llength $results] passing\n"
-quit
+
+if {!$GUI} { quit }    ;# leave the GUI open to look at the waveform

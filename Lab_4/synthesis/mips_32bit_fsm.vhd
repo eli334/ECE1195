@@ -4,6 +4,7 @@
 
 library ieee;
 use ieee.std_logic_1164.all;
+use ieee.NUMERIC_STD.all;
 
 entity mips_32bit_fsm is
     port(
@@ -33,11 +34,22 @@ architecture rtl of mips_32bit_fsm is
 
     -- Build an enumerated type for the state machine
     type state_type is (FETCH, DECODE, EXECUTE, MEM, WRITEBACK, WAIT_DONE, HILO_WB);
-    type instruction is (I_ADDI, I_ADDU, I_AND, I_BNE, I_CLO, 
-                          I_J, I_JR, I_LH, I_LUI, I_LW, 
-                          I_MFHI, I_MFLO, I_MULTU, I_ORI, I_SLL, 
-                          I_SLLV, I_SLTI, I_SRA, I_SUB, I_SW,
-                          I_NOP, I_SLT);
+    type instruction is (
+        I_NOP,
+        I_ADDI, I_ORI,  I_SLTI, I_LUI,  -- ALU, immediate (RT)
+        I_ADDU, I_AND,  I_SUB,  I_SLT,  -- ALU, registers (RD)
+        I_SLL,  I_SRA,  I_SLLV,         -- shifts         (RD)
+        I_LW,   I_SW,   I_LH,           -- memory
+        I_BNE,  I_J,    I_JR,           -- branching/jumps
+        I_MFHI, I_MFLO, I_MULTU,        -- multiply       (HI/LO regs)
+        I_CLO                           -- SPECIAL2
+        );
+
+    subtype ALU_IMM is instruction range I_ADDI to I_LUI;
+    subtype ALU_REG is instruction range I_ADDU to I_SLT;
+    subtype SHIFT_OP   is instruction range I_SLL  to I_SLLV;
+    subtype MEMORY_OP  is instruction range I_LW   to I_LH;
+    subtype JUMP_OP    is instruction range I_BNE  to I_JR;
 
     -- Register to hold the current state
     signal state   : state_type;
@@ -121,16 +133,17 @@ begin
                                     state <= FETCH; 
                             end case;
                         when others => 
-                            report "Instruction not implemented." 
-                            severity warning; 
+                            report "Opcode not implemented: Op = " & integer'image(to_integer(unsigned(Op)))
+                            & ", state = " & state_type'image(state)
+                            severity warning;
                             state <= FETCH;
                     end case;
                 when EXECUTE => 
                     state <= WRITEBACK;
                     case instr is
-                        when I_LW | I_LH | I_SW => state <= MEM;
-                        when I_BNE | I_J | I_JR => state <= FETCH;
-                        when I_MULTU            => state <= WAIT_DONE;
+                        when I_LW   | I_SW  | I_LH  => state <= MEM;
+                        when I_BNE  | I_J   | I_JR  => state <= FETCH;
+                        when I_MULTU                => state <= WAIT_DONE;
                         when others => null;
                     end case;
                 when MEM =>
@@ -201,12 +214,16 @@ begin
             when FETCH =>
                 IorD     <= '0';
                 MemRead  <= '1';
-                IRWrite  <= '1';
+                IRWrite  <= '1';        -- fetching writes to instruction register
                 ALUSrcA  <= '0';
-                ALUSrcB  <= "01"; -- mux 1 is tied to x"00000004" for PC + 4
-                ALUOp    <= ALU_ADD; -- + for PC + 4
+                ALUSrcB  <= "01";       -- mux 1 is tied to x"00000004" for PC + 4
+                ALUOp    <= ALU_ADD;    -- + for PC + 4; PC is incremented while instruction is being fetched
                 PCSource <= "00";
                 PCWrite  <= '1';
+            when DECODE =>
+                ALUSrcA <= '0';       -- PC (already incremented to PC + 4)
+                ALUSrcB <= "11";      -- sign-extended immediate << 2
+                ALUOp   <= ALU_ADD;   -- ALUOut = branch target for BNE's EXECUTE
             when EXECUTE =>
                 case instr is
                     when I_ADDI  => -- Immediate first
@@ -243,8 +260,17 @@ begin
                     -- when BLTZAL  =>
                     when others  => null;
                 end case;
+            when MEM =>
+
+            null;
+            when WRITEBACK => 
+                RegWrite <= '1';
+                case instr is
+                    when I_ADDI | I_ORI | I_SLTI | I_LUI | I_LW | I_LH => RegDst <= '0';
+                    when others                                        => RegDst <= '1';
+                end case;
             when others => 
-                report "State not implemented yet." severity warning;
+                report "Output state not implemented yet." severity warning;
         end case;
     end process;
     
