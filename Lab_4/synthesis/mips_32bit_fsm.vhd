@@ -236,7 +236,11 @@ begin
                         ALUSrcA <= '1'; -- rs is muxed to 1
                         ALUSrcB <= "10"; -- mux 2 is sign extended I, not SLL'd by 2
                         ExtOp   <= '1';
-                    when I_SLTI  => null;
+                    when I_SLTI  => 
+                        ALUOp   <= ALU_SLT;
+                        ALUSrcA <= '1'; -- rs is muxed to 1
+                        ALUSrcB <= "10"; -- mux 2 is sign extended I, not SLL'd by 2
+                        ExtOp   <= '0';
                     when I_LUI   => null;
                     when I_LW    =>
                         ALUOp   <= ALU_ADD;
@@ -251,10 +255,22 @@ begin
                         ExtOp   <= '0';
                     when I_BNE   => null;
                     -- R-type
-                    when I_ADDU  => null;
-                    when I_AND   => null;
-                    when I_SUB   => null;
+                    when I_ADDU  => 
+                        ALUOp <= ALU_ADD;
+                        AluSrcA <= '1';
+                        AluSrcB <= "00"; -- from register B
+                    when I_AND   => 
+                        ALUOp <= ALU_AND;
+                        AluSrcA <= '1';
+                        AluSrcB <= "00";
+                    when I_SUB   => 
+                        ALUOp <= ALU_SUB;
+                        AluSrcA <= '1';
+                        AluSrcB <= "00";
                     when I_SLL   => null;
+                        -- ALUOp <= ALU_SLL;
+                        -- AluSrcA <= '1';
+                        -- AluSrcB <= "00";
                     when I_SLLV  => null;
                     when I_SRA   => null;
                     when I_JR    => null;
@@ -273,8 +289,7 @@ begin
                     when I_SW =>
                         MemWrite <= '1';
                         IorD     <= '1';
-                    when I_LW =>
-                        MemWrite <= '0';
+                    when I_LW | I_LH =>
                         IorD     <= '1';
                     when others => null;
                 end case;
@@ -283,6 +298,10 @@ begin
                 case instr is
                     when I_ADDI | I_ORI | I_SLTI | I_LUI | I_LW | I_LH => RegDst <= '0';
                     when others                                        => RegDst <= '1';
+                end case;
+                case instr is
+                    when I_LW | I_LH => MemToReg <= '1';
+                    when others      => MemToReg <= '0';
                 end case;
             when others => 
                 report "Output state not implemented yet." severity warning;
