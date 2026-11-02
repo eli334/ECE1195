@@ -18,17 +18,19 @@ entity CPU_datapath IS
         PCWriteCond : in STD_LOGIC;
         PCWrite     : in STD_LOGIC;
         IorD        : in STD_LOGIC;
-        MemtoReg    : in STD_LOGIC;
+        MemtoReg    : in STD_LOGIC_VECTOR(2 downto 0);
         IRWrite     : in STD_LOGIC;
         PCSource    : in STD_LOGIC_VECTOR(1 downto 0);
         ALUOp       : in STD_LOGIC_VECTOR(3 downto 0);
-        ALUSrcA     : in STD_LOGIC;
+        ALUSrcA     : in STD_LOGIC_VECTOR(1 downto 0);
         ALUSrcB     : in STD_LOGIC_VECTOR(1 downto 0);
+        SHAMTSrc    : in STD_LOGIC;
         RegWrite    : in STD_LOGIC;
         RegDst      : in STD_LOGIC;
         ExtOp       : in STD_LOGIC;
 
         MultDisable  : in STD_LOGIC;
+        HILOEnable   : in STD_LOGIC;
         MultFinished : out STD_LOGIC
     );
 end CPU_datapath;
@@ -92,6 +94,13 @@ architecture datapath of CPU_datapath is
     signal ALU_RESULT   : STD_LOGIC_VECTOR(31 downto 0);
     -- signal ALU_OF       : STD_LOGIC; -- unused
     signal ALU_ZERO     : STD_LOGIC;
+    signal ALU_SHAMT    : STD_LOGIC_VECTOR(4 downto 0);
+    
+    -- LUI
+    signal LUI_OUT      : STD_LOGIC_VECTOR(31 downto 0);
+    
+    -- CLO
+    signal CLO_OUT      : STD_LOGIC_VECTOR(31 downto 0);
 
     --- multiplier signals
     signal MULT_RESULT : STD_LOGIC_VECTOR(63 downto 0);
@@ -111,6 +120,7 @@ architecture datapath of CPU_datapath is
     
 begin
     --- memory logic
+
     IR_IN      <= memIn;
     memOut     <= B_REG_OUT;
 
@@ -128,24 +138,38 @@ begin
 
     IR_J <= IR_OUT(25 downto 0);
 
-    PC_LOAD <= (PCWriteCond and ALU_ZERO) or PCWrite;
+    PC_LOAD <= (PCWriteCond and not ALU_ZERO) or PCWrite;
 
     HI_REG_IN <= MULT_RESULT(63 downto 32);
     LO_REG_IN <= MULT_RESULT(31 downto 0);
 
     --- mux logic
     -- regfile Write Data
-    REGFILE_WD_MUX_OUT <= MEM_REG_OUT when MemtoReg = '1' else ALU_REG_OUT;
-    
+    with MemToReg select
+        REGFILE_WD_MUX_OUT <=   ALU_REG_OUT when "000",
+                                MEM_REG_OUT when "001",
+                                LUI_OUT     when "010", -- LUI
+                                CLO_OUT     when "011", -- CLO
+                                HI_REG_OUT  when "100",
+                                LO_REG_OUT  when "101",
+                                ALU_REG_OUT when others;
+
     -- regfile Write Register 
     REGFILE_WR_MUX_OUT <=  IR_RD when RegDst = '1' else IR_RT;
 
     -- A mux
-    ALU_A <= A_REG_OUT when ALUSrcA = '1' else PC_VALUE_OUT; 
+    with ALUSrcA select
+        ALU_A <=    PC_VALUE_OUT when "00",
+                    A_REG_OUT    when "01",
+                    B_REG_OUT    when "10",
+                    A_REG_OUT    when others;
+
+
+                        -- ALU_A <= A_REG_OUT when ALUSrcA = '1' else PC_VALUE_OUT; 
     
     -- B mux
     with ALUSrcB select
-        ALU_B <=    B_REG_OUT     when "00",
+        ALU_B <=            B_REG_OUT     when "00",
                             x"00000004"   when "01",
                             SGN_EXT_OUT   when "10",
                             IMDT_SLL_OUT  when "11",
@@ -153,13 +177,17 @@ begin
 
     -- PC mux
     with PCSource select
-        PC_VALUE_IN <=    ALU_RESULT  when "00",
+        PC_VALUE_IN <=  ALU_RESULT  when "00",
                         ALU_REG_OUT when "01",
                         PC_VALUE_OUT(31 downto 28) & PC_SLL_OUT when "10",
+                        A_REG_OUT   when "11",
                         ALU_RESULT  when others;
 
     -- memAddr mux
     dataAddr <= ALU_REG_OUT when IorD = '1' else PC_VALUE_OUT; 
+
+    -- SHAMT mux
+    ALU_SHAMT <= IR_SHAMT when SHAMTSrc = '0' else A_REG_OUT(4 downto 0);
 
     pc_reg    : entity work.ee_register(struct)
         generic map (
@@ -288,6 +316,9 @@ begin
 
     -- above is everything in the png
     
+    
+
+    -- multiplier
     multiplier  : entity work.ee_mult_top(structural)
         port map(
             A    => A_REG_OUT,
@@ -305,7 +336,7 @@ begin
             REG_WIDTH => 32
         )
         port map(
-            LOAD  => '1',
+            LOAD  => HILOEnable,
             CLK   => CLK,
             P_IN  => HI_REG_IN,
             RST   => RST,
@@ -317,15 +348,29 @@ begin
             REG_WIDTH => 32
         )
         port map(
-            LOAD  => '1',
+            LOAD  => HILOEnable,
             CLK   => CLK,
             P_IN  => LO_REG_IN,
             RST   => RST,
             P_OUT => LO_REG_OUT
     );
 
-
-
+    -- LUI 16-bit shifter
+    LUI_shifter : entity work.ee_shifter(rtl)
+            generic map (
+                IN_WIDTH => 16,
+                OUT_WIDTH => 32,
+                SHAMT => 16
+            ) port map (
+                data_in => IR_IMDT,
+                data_out => LUI_OUT
+            );
     
+    -- CLO
+    CLO     : entity work.ee_CLO(rtl)
+            port map(
+                data_in => A_REG_OUT,
+                returned_ones => CLO_OUT
+            );
 
 end datapath;

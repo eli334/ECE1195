@@ -120,6 +120,7 @@ test_reg   SLTI  2843FFFF  {2 FFFFFFFB}                   3 00000001  ;# slti $3
 test_reg   LUI   3C031234  {}                             3 12340000  ;# lui  $3, 0x1234
 test_reg   ADDU  00432021  {2 0000000A 3 00000014}        4 0000001E  ;# addu $4, $2, $3
 test_reg   LW    8C430004  {2 00000100}                   3 CAFEF00D CAFEF00D ;# lw $3, 4($2)
+test_reg   CLO   70431821  {2 FFF00000}                   3 0000000C  ;# clo $3, $2 -> 4
 test_store SW    AC430004  {2 00000100 3 DEADBEEF}        00000104 DEADBEEF   ;# sw $3, 4($2)
 test_pc    BNE   14430003  {2 00000001 3 00000002}        00000010            ;# bne $2, $3, 3 (taken)
 # Add the rest here; assemble each one in MARS and copy the hex from the Execute tab.

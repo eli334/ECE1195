@@ -13,9 +13,11 @@ entity CPU IS
 end CPU;
 
 architecture rtl of CPU is
-    signal PCWriteCond, PCWrite, IorD, MemtoReg, IRWrite : STD_LOGIC;
-    signal ALUSrcA, RegWrite, RegDst, ExtOp              : STD_LOGIC;
-    signal PCSource, ALUSrcB                             : STD_LOGIC_VECTOR(1 downto 0);
+    signal PCWriteCond, PCWrite, IorD, IRWrite : STD_LOGIC;
+    signal RegWrite, RegDst, ExtOp, SHAMTSrc             : STD_LOGIC;
+    signal MultDisable, MultFinished, HILOEnable         : STD_LOGIC;
+    signal PCSource, ALUSrcA, ALUSrcB                    : STD_LOGIC_VECTOR(1 downto 0);
+    signal MemtoReg                                      : STD_LOGIC_VECTOR(2 downto 0);
     signal ALUOp                                         : STD_LOGIC_VECTOR(3 downto 0);
     signal Op, Funct                                     : STD_LOGIC_VECTOR(5 downto 0);
 begin
@@ -35,6 +37,7 @@ begin
             IRWrite     => IRWrite,
             ALUSrcA     => ALUSrcA,
             ALUSrcB     => ALUSrcB,
+            SHAMTSrc    => SHAMTSrc,
             RegWrite    => RegWrite,
             RegDst      => RegDst,
             ExtOp       => ExtOp,
@@ -42,7 +45,9 @@ begin
             ALUOp       => ALUOp,
             Op          => Op,
             Funct       => Funct,
-            MultDisable => '1'
+            MultDisable => MultDisable,
+            HILOEnable => HILOEnable,
+            MultFinished => MultFinished
 
         );
     control : entity work.mips_32bit_fsm(rtl)
@@ -65,6 +70,9 @@ begin
             PCSource    => PCSource,
             ALUOp       => ALUOp,
             Op          => Op,
-            Funct       => Funct
+            Funct       => Funct,
+            MultDisable => MultDisable,
+            HILOEnable => HILOEnable,
+            MultFinished => MultFinished
         );
 end architecture;

@@ -64,7 +64,7 @@ begin
     
     with (A_31 xor B_31) select -- 0 if same, 1 if opposite
         intermedSigned <= intermedSame      when '0',
-                          intermedOpposite          when '1';
+                          intermedOpposite  when '1';
     
     ---- unsigned (SLTU):
     -- if CO is low, A < B
