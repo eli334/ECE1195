@@ -256,12 +256,11 @@ begin
                         ALUSrcA <= "01"; -- rs is muxed to 1
                         ALUSrcB <= "10"; -- mux 2 is sign extended I, not SLL'd by 2
                         ExtOp   <= '0';
-                    when I_LW    =>
+                    when I_LW | I_LH => 
                         ALUOp   <= ALU_ADD;
                         ALUSrcA <= "01";
                         ALUSrcB <= "10";
                         ExtOp   <= '0';
-                    when I_LH    => null;
                     when I_SW    => 
                         ALUOp   <= ALU_ADD;
                         ALUSrcA <= "01";
@@ -334,11 +333,12 @@ begin
                     when others                                        => RegDst <= '1';
                 end case;
                 case instr is
-                    when I_LW | I_LH => MemToReg <= "001";
+                    when I_LW        => MemToReg <= "001";
+                    when I_LH        => MemToReg <= "110";
                     when I_LUI       => MemToReg <= "010";
-                    when I_CLO       => MemtoReg <= "011";
-                    when I_MFHI      => MemtoReg <= "100";
-                    when I_MFLO      => MemtoReg <= "101";
+                    when I_CLO       => MemToReg <= "011";
+                    when I_MFHI      => MemToReg <= "100";
+                    when I_MFLO      => MemToReg <= "101";
                     when others      => MemToReg <= "000";
                 end case;
             when WAIT_DONE =>

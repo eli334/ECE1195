@@ -29,18 +29,18 @@
 #   0x00002040  0x80000000  SLL by 31
 #   0x00002044  0xFFFFFFFC  SRA negative (fills with ones)
 #   0x00002048  0x00000008  SRA positive
-#   0x0000204C  0x00000060  SLLV
-#   0x00002050  0x00000006  SLLV amount masked to 5 bits
+#   0x0000204C  0x00000060  SLLV				-- broken on first pass
+#   0x00002050  0x00000006  SLLV amount masked to 5 bits	-- broken on first pass
 #   0x00002054  0xCAFEF00D  word for LW
 #   0x00002058  0xCAFEF00D  LW
 #   0x0000205C  0x80017FFF  word for LH (0x80017FFF)
-#   0x00002060  0x00007FFF  LH low half, positive
-#   0x00002064  0xFFFF8001  LH high half, sign-extended
+#   0x00002060  0x00007FFF  LH low half, positive		-- broken on first pass
+#   0x00002064  0xFFFF8001  LH high half, sign-extended	-- broken on first pass
 #   0x00002068  0x0000000C  CLO
 #   0x0000206C  0x00000020  CLO all ones
 #   0x00002070  0x00000000  CLO none
-#   0x00002074  0x00000002  MFHI
-#   0x00002078  0xFFFFFFFD  MFLO
+#   0x00002074  0x00000002  MFHI				-- broken on first pass
+#   0x00002078  0xFFFFFFFD  MFLO				-- broken on first pass
 #   0x0000207C  0x0000000A  BNE taken
 #   0x00002080  0x0000600D  BNE not taken
 #   0x00002084  0x00000003  BNE backward loop

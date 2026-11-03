@@ -4,7 +4,7 @@ use ieee.std_logic_1164.all;
 entity cpu_tb is
     port(
         reset : in STD_LOGIC;
-        clk : in STD_LOGIC
+        clock : in STD_LOGIC
     );
 end cpu_tb;
 
@@ -16,7 +16,7 @@ begin
     U_0 : entity work.CPU
         port map(
             Reset         => Reset,
-            Clock         => clk,
+            Clock         => clock,
             MemoryDataIn  => mem_to_cpu,
             MemoryAddress => mem_addr,
             MemoryDataOut => cpu_to_mem,
@@ -27,7 +27,7 @@ begin
         ADDR_BITS => 12
     )
     port map( 
-      Clk      => clk,
+      Clk      => clock,
       MemWrite => MemWrite,
       addr     => mem_addr,
       dataIn   => cpu_to_mem,

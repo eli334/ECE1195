@@ -24,3 +24,11 @@ add_force {/cpu_tb/U_1/mw_U_0ram_table[5]} -radix hex {00000000}
 add_force {/cpu_tb/U_1/mw_U_0ram_table[6]} -radix hex {00000000}
 add_force {/cpu_tb/U_1/mw_U_0ram_table[7]} -radix hex {00000000}
 
+add_force clk 1 {0 5ns} -repeat_every 10ns
+add_force reset 0
+run 2500ps
+add_force reset 1
+run 5 ns
+add_force reset 0
+
+run 50 ns

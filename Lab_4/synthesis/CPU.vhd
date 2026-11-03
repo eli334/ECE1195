@@ -64,6 +64,7 @@ begin
             IRWrite     => IRWrite,
             ALUSrcA     => ALUSrcA,
             ALUSrcB     => ALUSrcB,
+            SHAMTSrc    => SHAMTSrc,
             RegWrite    => RegWrite,
             RegDst      => RegDst,
             ExtOp       => ExtOp,

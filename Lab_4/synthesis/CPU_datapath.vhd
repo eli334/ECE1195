@@ -64,6 +64,9 @@ architecture datapath of CPU_datapath is
     -- memory register
     signal MEM_ADDR_IN : STD_LOGIC_VECTOR(31 downto 0);
     signal MEM_REG_OUT : STD_LOGIC_VECTOR(31 downto 0);
+
+    -- LH signal
+    signal LH_OUT : STD_LOGIC_VECTOR(31 downto 0);
     
     -- A register
     signal A_REG_OUT   : STD_LOGIC_VECTOR(31 downto 0);
@@ -152,6 +155,7 @@ begin
                                 CLO_OUT     when "011", -- CLO
                                 HI_REG_OUT  when "100",
                                 LO_REG_OUT  when "101",
+                                LH_OUT      when "110",
                                 ALU_REG_OUT when others;
 
     -- regfile Write Register 
@@ -189,6 +193,8 @@ begin
     -- SHAMT mux
     ALU_SHAMT <= IR_SHAMT when SHAMTSrc = '0' else A_REG_OUT(4 downto 0);
 
+    -- LH mux
+    LH_OUT <= (31 downto 16 => MEM_REG_OUT(15)) & MEM_REG_OUT(15 downto 0);
     pc_reg    : entity work.ee_register(struct)
         generic map (
             REG_WIDTH => 32
@@ -265,7 +271,7 @@ begin
      port map(
         A        => ALU_A,
         B        => ALU_B,
-        SHAMT    => IR_SHAMT,
+        SHAMT    => ALU_SHAMT,
         ALUOp    => ALUOp,
         R        => ALU_RESULT,
         Overflow => open,
@@ -340,7 +346,7 @@ begin
             CLK   => CLK,
             P_IN  => HI_REG_IN,
             RST   => RST,
-            P_OUT => LO_REG_OUT
+            P_OUT => HI_REG_OUT
     );
 
     LO_reg    : entity work.ee_register(struct)
