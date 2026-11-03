@@ -123,8 +123,8 @@ begin
                                 when SP_SRA  => instr <= I_SRA;
                                 when SP_SUB  => instr <= I_SUB;
                                 when others => 
-                                    report "SPECIAL function not implemented."
-                                    severity warning;
+                                    -- report "SPECIAL function not implemented (or running into 0x00000000 data while running)."
+                                    -- severity note;
                                     state <= FETCH;
                             end case;
                                 
@@ -133,14 +133,14 @@ begin
                                 when SP2_CLO 
                                     => instr <= I_CLO;
                                 when others => 
-                                    report "SPECIAL2 function not implemented."
-                                    severity warning;
+                                    -- report "SPECIAL2 function not implemented."
+                                    -- severity warning;
                                     state <= FETCH; 
                             end case;
                         when others => 
-                            report "Opcode not implemented: Op = " & integer'image(to_integer(unsigned(Op)))
-                            & ", state = " & state_type'image(state)
-                            severity warning;
+                            -- report "Opcode not implemented: Op = " & integer'image(to_integer(unsigned(Op)))
+                            -- & ", state = " & state_type'image(state)
+                            -- severity warning;
                             state <= FETCH;
                     end case;
                 when EXECUTE => 
@@ -165,7 +165,7 @@ begin
                     end case;
                 when HILO_WB   => state <= FETCH;
                 when others =>
-                    report "State not recognized." severity warning;
+                    -- report "State not recognized." severity warning;
                     state <= FETCH;
             end case;
         end if;
@@ -345,9 +345,9 @@ begin
                 MultDisable <= '0';
             when HILO_WB =>     
                 MultDisable <= '0';
-                HILOEnable <= '1';
+                HILOEnable  <= '1';
             when others => 
-                report "Output state not implemented yet." severity warning;
+                -- report "Output state not implemented yet." severity warning;
         end case;
     end process;
     

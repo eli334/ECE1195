@@ -73,13 +73,15 @@ try {
     Write-Host "== xsim: running ${Top}_sim" -ForegroundColor Cyan
     if ($Gui -and $TclPath) {
         $env:EE_GUI = "1"
-        & "$VivadoBin\xsim.bat" "${Top}_sim" -gui -tclbatch $TclPath
+        "source -notrace {$TclPath}" | Set-Content run.tcl
+        & "$VivadoBin\xsim.bat" "${Top}_sim" -gui -tclbatch run.tcl
     } elseif ($Gui) {
         $tcl = Join-Path $build "gui.tcl"
         "log_wave -r /`nrun all" | Set-Content $tcl
         & "$VivadoBin\xsim.bat" "${Top}_sim" -gui -tclbatch gui.tcl
     } elseif ($TclPath) {
-        & "$VivadoBin\xsim.bat" "${Top}_sim" -tclbatch $TclPath -onerror quit
+        "source -notrace {$TclPath}" | Set-Content run.tcl
+        & "$VivadoBin\xsim.bat" "${Top}_sim" -tclbatch run.tcl -onerror quit
     } else {
         & "$VivadoBin\xsim.bat" "${Top}_sim" -runall
     }
