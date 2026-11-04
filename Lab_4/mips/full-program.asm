@@ -1,14 +1,4 @@
-# All 20 instructions in one program (119 instructions).
-#
-# MARS settings: turn off pseudo-instructions, and set Memory Configuration to
-# 'Compact, Text at Address 0'. Results are stored with $28 = 0x2000 as the base,
-# which is the .data segment in that configuration.
-#
-# Control flow (BNE, J, JR) is tested last, so a bad branch can't skip earlier checks.
-# The last result (0xD0E at 0x2090) means the program reached the end, after which
-# it halts in a 'j done' loop (with a BNE backup in case J doesn't work).
-#
-# Expected memory afterward:
+# Expected memory:
 #   address     value       check
 #   0x00002000  0x00000011  ADDI positive
 #   0x00002004  0xFFFFFFFD  ADDI negative
@@ -35,7 +25,7 @@
 #   0x00002058  0xCAFEF00D  LW
 #   0x0000205C  0x80017FFF  word for LH (0x80017FFF)
 #   0x00002060  0x00007FFF  LH low half, positive		-- broken on first pass
-#   0x00002064  0xFFFF8001  LH high half, sign-extended	-- broken on first pass
+#   0x00002064  0xFFFF8001  LH high half, sign-extended	        -- broken on first pass
 #   0x00002068  0x0000000C  CLO
 #   0x0000206C  0x00000020  CLO all ones
 #   0x00002070  0x00000000  CLO none
