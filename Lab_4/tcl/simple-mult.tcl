@@ -1,11 +1,32 @@
 # restart the simulation
 restart
 
-# top-level CPU testbench is named cpu_tb; U_1 is the memory block
-add_wave {{/cpu_tb/U_1}}
+# top-level CPU testbench is named cpu_tb; U_0 is the CPU and U_1 is the memory block
+add_wave {{/cpu_tb/clock}}
+add_wave {{/cpu_tb/reset}}
 
+add_wave_divider "Control"
 add_wave {{/cpu_tb/U_0/control/state}}
 add_wave {{/cpu_tb/U_0/control/instr}}
+
+add_wave_divider "Multiplier"
+add_wave -radix hex {{/cpu_tb/U_0/datapath/A_REG_OUT}}
+add_wave -radix hex {{/cpu_tb/U_0/datapath/B_REG_OUT}}
+add_wave {{/cpu_tb/U_0/datapath/MultDisable}}
+add_wave {{/cpu_tb/U_0/datapath/MultFinished}}
+add_wave -radix hex {{/cpu_tb/U_0/datapath/MULT_RESULT}}
+add_wave {{/cpu_tb/U_0/datapath/HILOEnable}}
+add_wave -radix hex {{/cpu_tb/U_0/datapath/HI_REG_OUT}}
+add_wave -radix hex {{/cpu_tb/U_0/datapath/LO_REG_OUT}}
+
+add_wave_divider "Memory"
+add_wave {{/cpu_tb/U_1/MemWrite}}
+add_wave -radix hex {{/cpu_tb/U_1/addr}}
+add_wave -radix hex {{/cpu_tb/U_1/dataIn}}
+add_wave -radix hex {{/cpu_tb/U_1/mw_U_0ram_table[13]}}
+add_wave -radix hex {{/cpu_tb/U_1/mw_U_0ram_table[14]}}
+add_wave -radix hex {{/cpu_tb/U_1/mw_U_0ram_table[15]}}
+add_wave -radix hex {{/cpu_tb/U_1/mw_U_0ram_table[16]}}
 
 # Multiplication test program (instruction memory)
 #
@@ -14,15 +35,16 @@ add_wave {{/cpu_tb/U_0/control/instr}}
 # multu $1, $2            # HI:LO = 0x00000002_FFFFFFFD (unsigned)
 # mfhi  $3
 # mflo  $4
-# sw    $3, 48($0)        # word 12
-# sw    $4, 52($0)        # word 13
+# sw    $3, 52($0)        # word 12
+# sw    $4, 56($0)        # word 13
 # multu $1, $1            # HI:LO = 0xFFFFFFFE_00000001 (second MULTU: multiplier restarts)
 # mfhi  $5
 # mflo  $6
-# sw    $5, 56($0)        # word 14
-# sw    $6, 60($0)        # word 15
-#
-# Words 12-15 hold the results, so they are not forced; a forced word can't be stored to.
+# sw    $5, 60($0)        # word 14
+# sw    $6, 64($0)        # word 15
+# done: j done
+
+# Words 13-16 hold the results, so they are not forced; a forced word can't be stored to.
 add_force {/cpu_tb/U_1/mw_U_0ram_table[0]}  -radix hex {2001FFFF}
 add_force {/cpu_tb/U_1/mw_U_0ram_table[1]}  -radix hex {20020003}
 add_force {/cpu_tb/U_1/mw_U_0ram_table[2]}  -radix hex {00220019}
@@ -48,22 +70,22 @@ add_force reset 0
 run 1200 ns
 
 # check results (same style as the provided test script)
-if {[get_value -radix unsigned {/cpu_tb/U_1/mw_U_0ram_table[12]}] == 0x00000002} {
+if {[get_value -radix unsigned {/cpu_tb/U_1/mw_U_0ram_table[13]}] == 0x00000002} {
 	puts "Correct! MFHI after 0xFFFFFFFF x 3 passed."
 } else {
 	puts "Incorrect! MFHI after 0xFFFFFFFF x 3 didn't pass."
 }
-if {[get_value -radix unsigned {/cpu_tb/U_1/mw_U_0ram_table[13]}] == 0xFFFFFFFD} {
+if {[get_value -radix unsigned {/cpu_tb/U_1/mw_U_0ram_table[14]}] == 0xFFFFFFFD} {
 	puts "Correct! MFLO after 0xFFFFFFFF x 3 passed."
 } else {
 	puts "Incorrect! MFLO after 0xFFFFFFFF x 3 didn't pass."
 }
-if {[get_value -radix unsigned {/cpu_tb/U_1/mw_U_0ram_table[14]}] == 0xFFFFFFFE} {
+if {[get_value -radix unsigned {/cpu_tb/U_1/mw_U_0ram_table[15]}] == 0xFFFFFFFE} {
 	puts "Correct! MFHI after 0xFFFFFFFF x 0xFFFFFFFF passed."
 } else {
 	puts "Incorrect! MFHI after 0xFFFFFFFF x 0xFFFFFFFF didn't pass."
 }
-if {[get_value -radix unsigned {/cpu_tb/U_1/mw_U_0ram_table[15]}] == 0x00000001} {
+if {[get_value -radix unsigned {/cpu_tb/U_1/mw_U_0ram_table[16]}] == 0x00000001} {
 	puts "Correct! MFLO after 0xFFFFFFFF x 0xFFFFFFFF passed."
 } else {
 	puts "Incorrect! MFLO after 0xFFFFFFFF x 0xFFFFFFFF didn't pass."
