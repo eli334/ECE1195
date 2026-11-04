@@ -36,11 +36,12 @@ begin
             end loop;
         elsif(rising_edge(CLK)) then
             if(regWrite = '1') then
-                report "regfile write: $" & integer'image(to_integer(unsigned(writeSelect)))
-                & " <= " & integer'image(to_integer(signed(dataIn)));
+                -- report "regfile write: $" & integer'image(to_integer(unsigned(writeSelect)))
+                -- & " <= " & integer'image(to_integer(signed(dataIn)));
                 
                 if(writeSelect = "00000") then
-                    report("Attempted write to $0; blocked") severity warning;
+                    -- report("Attempted write to $0; blocked") severity warning;
+                    null;
                 else
                     regs(to_integer(unsigned(writeSelect))) <= dataIn;
                 end if;
